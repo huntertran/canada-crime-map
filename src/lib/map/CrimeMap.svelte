@@ -131,6 +131,13 @@
 		(map.getSource(SRC_BOUNDARY) as GeoJSONSource | undefined)?.setData(boundary as any);
 	});
 
+	// Fly to the active region's extent when it changes.
+	$effect(() => {
+		const { center, zoom } = region;
+		if (!map || !ready) return;
+		map.flyTo({ center, zoom, essential: true });
+	});
+
 	// Toggle between cluster view and heatmap view.
 	$effect(() => {
 		if (!map || !ready) return;

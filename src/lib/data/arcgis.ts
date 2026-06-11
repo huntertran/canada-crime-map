@@ -104,6 +104,42 @@ async function queryArcgis(
 	return { type: 'FeatureCollection', features };
 }
 
+// Per-region latest available date (YYYY-MM-DD), so the UI can anchor its window
+// to data that actually exists (Toronto's MCI lags ~2 months behind today).
+const maxDateCache = new Map<string, string | null>();
+
+export async function fetchDataMaxDate(
+	region: RegionConfig,
+	signal?: AbortSignal
+): Promise<string | null> {
+	if (!region.verified) return null;
+	if (maxDateCache.has(region.id)) return maxDateCache.get(region.id)!;
+
+	const url = new URL(region.layerUrl.replace(/\/$/, '') + '/query');
+	url.search = new URLSearchParams({
+		where: '1=1',
+		outStatistics: JSON.stringify([
+			{ statisticType: 'max', onStatisticField: region.fieldMap.date, outStatisticFieldName: 'mx' }
+		]),
+		f: 'json'
+	}).toString();
+
+	let iso: string | null = null;
+	try {
+		const res = await fetch(url, { signal });
+		if (res.ok) {
+			const json = await res.json();
+			const mx = json?.features?.[0]?.attributes?.mx;
+			if (typeof mx === 'number') iso = new Date(mx).toISOString().slice(0, 10);
+			else if (typeof mx === 'string' && mx) iso = mx.slice(0, 10);
+		}
+	} catch {
+		iso = null;
+	}
+	maxDateCache.set(region.id, iso);
+	return iso;
+}
+
 export interface LoadResult {
 	data: CrimeCollection;
 	source: 'live' | 'cache' | 'demo';
@@ -133,6 +169,9 @@ export async function loadIncidents(
 			cacheSet(key, data);
 			return { data, source: 'live' };
 		} catch (e) {
+			// An aborted request (filters/region changed mid-flight) is not a failure —
+			// rethrow so the caller drops it instead of showing demo data.
+			if (e instanceof DOMException && e.name === 'AbortError') throw e;
 			const msg = e instanceof Error ? e.message : String(e);
 			return { data: filterDemo(generateDemo(region), filters), source: 'demo', error: msg };
 		}

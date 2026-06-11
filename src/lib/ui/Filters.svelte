@@ -6,17 +6,36 @@
 
 	let {
 		region,
+		regions,
+		onRegion,
 		filters = $bindable(),
 		showHeatmap = $bindable(false),
 		count,
-		source
+		source,
+		dataThrough = null
 	}: {
 		region: RegionConfig;
+		regions: RegionConfig[];
+		onRegion: (r: RegionConfig) => void;
 		filters: Filters;
 		showHeatmap?: boolean;
 		count: number;
 		source: 'live' | 'cache' | 'demo';
+		dataThrough?: string | null;
 	} = $props();
+
+	function prettyDate(iso: string): string {
+		const d = new Date(iso);
+		return isNaN(d.getTime())
+			? iso
+			: d.toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
+	}
+
+	function onRegionChange(e: Event) {
+		const id = (e.currentTarget as HTMLSelectElement).value;
+		const r = regions.find((x) => x.id === id);
+		if (r) onRegion(r);
+	}
 
 	function toggle(list: string[], value: string): string[] {
 		return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
@@ -39,6 +58,15 @@
 	</button>
 
 	<div class="body">
+	<label class="field region">
+		<span>Region</span>
+		<select value={region.id} onchange={onRegionChange}>
+			{#each regions as r}
+				<option value={r.id}>{r.label}</option>
+			{/each}
+		</select>
+	</label>
+
 	<label class="field">
 		<span>From</span>
 		<input type="date" bind:value={filters.from} max={filters.to} />
@@ -91,6 +119,9 @@
 		<strong>{count.toLocaleString()}</strong> incidents
 		<span class="badge" class:demo={source === 'demo'}>{source}</span>
 	</div>
+	{#if dataThrough}
+		<p class="through">Data through {prettyDate(dataThrough)}</p>
+	{/if}
 	{#if source === 'demo'}
 		<p class="note">
 			Showing demo data — the live Peel endpoint isn't wired in yet. See
@@ -194,6 +225,12 @@
 		padding: 4px 6px;
 		box-sizing: border-box;
 	}
+	.region select {
+		width: 150px;
+		min-height: 32px;
+		padding: 4px 6px;
+		box-sizing: border-box;
+	}
 	.chip {
 		display: inline-flex;
 		align-items: center;
@@ -228,6 +265,11 @@
 		margin: 8px 0 0;
 		font-size: 11px;
 		color: #8a5a00;
+	}
+	.through {
+		margin: 6px 0 0;
+		font-size: 11px;
+		color: #666;
 	}
 	code {
 		background: #f2f2f2;

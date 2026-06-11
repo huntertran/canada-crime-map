@@ -17,6 +17,7 @@ export const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export const CATEGORY_COLORS: Record<string, string> = {
+	// Peel (OccType codes)
 	ASL: '#e6194b',
 	BNE: '#ffe119',
 	DRP: '#911eb4',
@@ -25,7 +26,13 @@ export const CATEGORY_COLORS: Record<string, string> = {
 	HOM: '#000000',
 	MIS: '#808000',
 	ROB: '#f58231',
-	VEH: '#3cb44b'
+	VEH: '#3cb44b',
+	// Toronto (CSI_CATEGORY values)
+	Assault: '#e6194b',
+	'Break and Enter': '#ffe119',
+	'Auto Theft': '#3cb44b',
+	Robbery: '#f58231',
+	'Theft Over': '#911eb4'
 };
 
 export const DEFAULT_COLOR = '#808080';
@@ -72,6 +79,27 @@ export const REGIONS: RegionConfig[] = [
 			url: 'https://services6.arcgis.com/ONZht79c8QWuX759/arcgis/rest/services/Municipal_Boundary/FeatureServer/0',
 			nameField: 'MUN_NAME'
 		},
+		verified: true
+	},
+	{
+		id: 'toronto',
+		label: 'Toronto (city-wide)',
+		layerUrl:
+			'https://services.arcgis.com/S9th0jAJ7bqgIRjw/arcgis/rest/services/Major_Crime_Indicators_Open_Data/FeatureServer/0',
+		fieldMap: {
+			id: 'EVENT_UNIQUE_ID',
+			category: 'CSI_CATEGORY',
+			date: 'OCC_DATE',
+			municipality: 'DIVISION',
+			description: 'OFFENCE',
+			address: 'LOCATION_TYPE'
+		},
+		center: [-79.38, 43.72],
+		zoom: 10.5,
+		// Toronto Police "Major Crime Indicators" CSI categories.
+		categories: ['Assault', 'Break and Enter', 'Auto Theft', 'Robbery', 'Theft Over'],
+		// No municipal sub-filter (single city); Etobicoke etc. are districts within Toronto.
+		municipalities: [],
 		verified: true
 	}
 ];
