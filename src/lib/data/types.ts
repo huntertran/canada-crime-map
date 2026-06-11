@@ -49,6 +49,8 @@ export interface RegionConfig {
 	zoom: number;
 	categories: string[];
 	municipalities: string[];
+	/** Optional municipal-boundary layer; selecting a municipality outlines it on the map. */
+	boundary?: { url: string; nameField: string };
 	/** false => layerUrl is a placeholder / not yet confirmed; app falls back to demo data. */
 	verified: boolean;
 }

@@ -124,13 +124,23 @@ is approximate (Peel geocodes to nearest intersection).
 `cache.ts`: memoize fetched FeatureCollections by `region|where|fields` in memory and
 localStorage (with a short TTL) so re-toggling filters doesn't re-hit ArcGIS.
 
-## Suggested extra features (req 4)
-Build now: **date-range + category + municipality filters** (above), **legend**,
-**incident detail panel**, **"locate me"** geolocate control, **shareable URL state**
-(filters/viewport in query params).
-Backlog (note in README, not built): heatmap toggle, time-slider animation of incidents
-over the 36 months, per-area crime-rate choropleth, trend sparkline, multi-region
-switcher UI, CSV export of current view, dark mode.
+## Roadmap
+
+Built:
+- [x] Date + category + municipality filters
+- [x] Legend
+- [x] Incident detail panel
+- [x] "Locate me" geolocate control
+
+Backlog:
+- [ ] Shareable URL state (filters/viewport in query params)
+- [ ] Heatmap toggle
+- [ ] Time-slider animation over the full window
+- [ ] Per-area crime-rate choropleth
+- [ ] Trend sparkline
+- [ ] Multi-region switcher UI
+- [ ] CSV export of current view
+- [ ] Dark mode
 
 ## Verification
 1. `npm run dev` → map loads centered on Peel; demo base tiles render.

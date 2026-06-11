@@ -67,6 +67,11 @@ export const REGIONS: RegionConfig[] = [
 		zoom: 10.5,
 		categories: ['ASL', 'BNE', 'ROB', 'VEH', 'FRA', 'MIS', 'DRP', 'DRT', 'HOM'],
 		municipalities: ['BRAMPTON', 'MISSISSAUGA', 'CALEDON'],
+		// Official Peel "Municipal Boundary" layer; MUN_NAME = Brampton/Mississauga/Caledon.
+		boundary: {
+			url: 'https://services6.arcgis.com/ONZht79c8QWuX759/arcgis/rest/services/Municipal_Boundary/FeatureServer/0',
+			nameField: 'MUN_NAME'
+		},
 		verified: true
 	}
 ];

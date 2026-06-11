@@ -4,7 +4,7 @@ import { defineConfig } from 'vite';
 
 // On GitHub Pages a project site is served from /<repo>/, so prod needs a base path.
 // CI sets BASE_PATH=/canada-crime-map; local dev/preview leave it empty.
-const base = process.env.BASE_PATH ?? '';
+const base = (process.env.BASE_PATH ?? '') as '' | `/${string}`;
 
 export default defineConfig({
 	plugins: [

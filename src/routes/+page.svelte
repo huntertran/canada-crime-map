@@ -4,6 +4,7 @@
 	import DetailPanel from '$lib/ui/DetailPanel.svelte';
 	import { DEFAULT_REGION } from '$lib/data/regions';
 	import { loadIncidents } from '$lib/data/arcgis';
+	import { loadBoundaries, EMPTY_BOUNDARY, type BoundaryCollection } from '$lib/data/boundaries';
 	import type { CrimeCollection, CrimeProps, Filters as FilterState } from '$lib/data/types';
 
 	const region = DEFAULT_REGION;
@@ -23,6 +24,8 @@
 	let source = $state<'live' | 'cache' | 'demo'>('demo');
 	let loading = $state(false);
 	let selected = $state<CrimeProps | null>(null);
+	let showHeatmap = $state(false);
+	let boundary = $state<BoundaryCollection>(EMPTY_BOUNDARY);
 
 	// Reload whenever filters change. Snapshot so the effect tracks each field.
 	$effect(() => {
@@ -42,6 +45,16 @@
 			.finally(() => (loading = false));
 		return () => ctrl.abort();
 	});
+
+	// Outline the selected municipalities. Separate effect: only refetch on that change.
+	$effect(() => {
+		const munis = [...filters.municipalities];
+		const ctrl = new AbortController();
+		loadBoundaries(region, munis, ctrl.signal)
+			.then((fc) => (boundary = fc))
+			.catch(() => {}); // boundary is decorative — ignore failures
+		return () => ctrl.abort();
+	});
 </script>
 
 <svelte:head>
@@ -49,8 +62,8 @@
 </svelte:head>
 
 <main>
-	<CrimeMap {region} {data} onSelect={(p) => (selected = p)} />
-	<Filters {region} bind:filters count={data.features.length} {source} />
+	<CrimeMap {region} {data} {boundary} heatmap={showHeatmap} onSelect={(p) => (selected = p)} />
+	<Filters {region} bind:filters bind:showHeatmap count={data.features.length} {source} />
 	<DetailPanel incident={selected} onClose={() => (selected = null)} />
 	{#if loading}<div class="loading">Loading…</div>{/if}
 </main>
