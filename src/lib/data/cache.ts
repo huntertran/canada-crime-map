@@ -4,8 +4,19 @@ import type { CrimeCollection } from './types';
 // keyed by region+filter signature. Keeps re-toggling filters from re-hitting ArcGIS.
 
 const TTL_MS = 30 * 60 * 1000; // 30 minutes
-const PREFIX = 'ccm:cache:';
+// v2: features gained `clearance`; bump invalidates cached pre-clearance shapes.
+const PREFIX = 'ccm:cache:v2:';
 const mem = new Map<string, { at: number; data: CrimeCollection }>();
+
+// Drop entries from older cache versions — they are never read again.
+try {
+	for (let i = localStorage.length - 1; i >= 0; i--) {
+		const k = localStorage.key(i);
+		if (k?.startsWith('ccm:cache:') && !k.startsWith(PREFIX)) localStorage.removeItem(k);
+	}
+} catch {
+	// localStorage unavailable (SSR/privacy mode) — nothing to clean.
+}
 
 export function cacheGet(key: string): CrimeCollection | null {
 	const hit = mem.get(key);

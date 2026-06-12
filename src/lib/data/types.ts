@@ -13,6 +13,8 @@ export interface CrimeProps {
 	municipality?: string;
 	description?: string;
 	address?: string;
+	/** Raw clearance status, e.g. Peel's Solved / Unsolved / Ongoing. */
+	clearance?: string;
 }
 
 export interface CrimeFeature {
@@ -37,7 +39,14 @@ export interface FieldMap {
 	municipality?: string;
 	description?: string;
 	address?: string;
+	clearance?: string;
 }
+
+/** Per-category clearance tallies (regions with a clearance field only). */
+export type ClearanceCounts = Record<
+	string,
+	{ solved: number; ongoing: number; unsolved: number }
+>;
 
 export interface RegionConfig {
 	id: string;
@@ -47,6 +56,8 @@ export interface RegionConfig {
 	fieldMap: FieldMap;
 	center: [number, number]; // [lng, lat]
 	zoom: number;
+	/** [west, south, east, north] extent used to auto-select the region as the map pans. */
+	bounds?: [number, number, number, number];
 	categories: string[];
 	municipalities: string[];
 	/** Optional municipal-boundary layer; selecting a municipality outlines it on the map. */

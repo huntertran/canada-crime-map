@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import type { Filters, RegionConfig } from '../data/types';
+	import type { ClearanceCounts, Filters, RegionConfig } from '../data/types';
 	import { colorFor, labelFor, muniLabel } from '../data/regions';
 	import { iconSvg } from '../map/icons';
 
@@ -12,7 +12,8 @@
 		showHeatmap = $bindable(false),
 		count,
 		source,
-		dataThrough = null
+		dataThrough = null,
+		clearanceCounts = null
 	}: {
 		region: RegionConfig;
 		regions: RegionConfig[];
@@ -22,6 +23,7 @@
 		count: number;
 		source: 'live' | 'cache' | 'demo';
 		dataThrough?: string | null;
+		clearanceCounts?: ClearanceCounts | null;
 	} = $props();
 
 	function prettyDate(iso: string): string {
@@ -78,7 +80,16 @@
 
 	<fieldset>
 		<legend>Crime type</legend>
+		{#if clearanceCounts}
+			<p class="cc-legend">
+				<span><i class="dot s"></i>solved</span>
+				<span><i class="dot o"></i>ongoing</span>
+				<span><i class="dot u"></i>unsolved</span>
+			</p>
+		{/if}
 		{#each region.categories as cat}
+			{@const cc = clearanceCounts?.[cat]}
+			{@const total = cc ? cc.solved + cc.ongoing + cc.unsolved : 0}
 			<label class="chk">
 				<input
 					type="checkbox"
@@ -86,7 +97,31 @@
 					onchange={() => (filters.categories = toggle(filters.categories, cat))}
 				/>
 				<span class="chip" style:background={colorFor(cat)}>{@html iconSvg(cat)}</span>
-				{labelFor(cat)}
+				{#if cc}
+					<span
+						class="cat"
+						title="{cc.solved.toLocaleString()} solved / {cc.ongoing.toLocaleString()} ongoing / {cc.unsolved.toLocaleString()} unsolved"
+					>
+						<span class="cat-top">
+							<span class="cat-name">{labelFor(cat)}</span>
+							<span class="total">{total.toLocaleString()}</span>
+						</span>
+						<span class="bar">
+							{#if total}
+								<i class="seg s" style:width="{(cc.solved / total) * 100}%"></i>
+								<i class="seg o" style:width="{(cc.ongoing / total) * 100}%"></i>
+								<i class="seg u" style:width="{(cc.unsolved / total) * 100}%"></i>
+							{/if}
+						</span>
+						<span class="counts">
+							<span><i class="dot s"></i>{cc.solved.toLocaleString()}</span>
+							<span><i class="dot o"></i>{cc.ongoing.toLocaleString()}</span>
+							<span><i class="dot u"></i>{cc.unsolved.toLocaleString()}</span>
+						</span>
+					</span>
+				{:else}
+					{labelFor(cat)}
+				{/if}
 			</label>
 		{/each}
 	</fieldset>
@@ -243,6 +278,80 @@
 	.chip :global(svg) {
 		width: 14px;
 		height: 14px;
+	}
+	/* Clearance row: name + total, a thin proportion bar, then dot-keyed counts.
+	   Every row shares the structure, so the numbers align by construction. */
+	.cat {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 3px;
+		padding: 2px 0;
+	}
+	.cat-top {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 8px;
+	}
+	.cat-name {
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.total {
+		font-size: 11px;
+		font-weight: 600;
+		color: #888;
+		font-variant-numeric: tabular-nums;
+	}
+	.bar {
+		display: flex;
+		height: 4px;
+		border-radius: 2px;
+		overflow: hidden;
+		background: #eceff3;
+	}
+	.seg {
+		display: block;
+		height: 100%;
+	}
+	.counts {
+		display: flex;
+		gap: 12px;
+		font-size: 10.5px;
+		color: #667;
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+	.counts span,
+	.cc-legend span {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+	}
+	.dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		flex: 0 0 auto;
+	}
+	.s {
+		background: #16a34a;
+	}
+	.o {
+		background: #f59e0b;
+	}
+	.u {
+		background: #a8b3c0;
+	}
+	.cc-legend {
+		display: flex;
+		gap: 12px;
+		margin: 0 0 2px;
+		font-size: 10.5px;
+		color: #888;
 	}
 	.status {
 		margin-top: 12px;

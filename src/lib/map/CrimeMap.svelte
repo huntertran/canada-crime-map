@@ -6,6 +6,7 @@
 		addCrimeLayers,
 		addHeatmapLayer,
 		addIconLayer,
+		addSolvedBadgeLayer,
 		addBoundaryLayers,
 		SRC,
 		SRC_HEAT,
@@ -22,21 +23,47 @@
 
 	let {
 		region,
+		regions = [],
 		data,
 		boundary = EMPTY_BOUNDARY,
 		heatmap = false,
-		onSelect
+		onSelect,
+		onAutoRegion
 	}: {
 		region: RegionConfig;
+		regions?: RegionConfig[];
 		data: CrimeCollection;
 		boundary?: BoundaryCollection;
 		heatmap?: boolean;
 		onSelect?: (p: CrimeProps) => void;
+		/** Fired when panning lands the map inside another region's bounds. */
+		onAutoRegion?: (r: RegionConfig) => void;
 	} = $props();
 
 	let container: HTMLDivElement;
 	let map: maplibregl.Map | undefined;
 	let ready = $state(false);
+	// Region id selected by panning — the flyTo effect skips it so the map isn't yanked
+	// back to the region's home view right after the user scrolled there themselves.
+	let pannedToRegionId: string | null = null;
+
+	function inBounds([lng, lat]: [number, number], [w, s, e, n]: [number, number, number, number]) {
+		return lng >= w && lng <= e && lat >= s && lat <= n;
+	}
+
+	// If the map center left the active region and entered another region's bounds,
+	// switch the app to that region. Current region wins ties in overlap zones.
+	function detectRegion() {
+		if (!map || !onAutoRegion || map.getZoom() < 8) return;
+		const c = map.getCenter();
+		const center: [number, number] = [c.lng, c.lat];
+		if (region.bounds && inBounds(center, region.bounds)) return;
+		const hit = regions.find((r) => r.id !== region.id && r.bounds && inBounds(center, r.bounds));
+		if (hit) {
+			pannedToRegionId = hit.id;
+			onAutoRegion(hit);
+		}
+	}
 
 	// Free raster basemap (OpenStreetMap) — no API token required.
 	const style: maplibregl.StyleSpecification = {
@@ -82,6 +109,7 @@
 			addCrimeLayers(map!);
 			await loadCrimeIcons(map!); // register glyphs before the symbol layer references them
 			addIconLayer(map!);
+			addSolvedBadgeLayer(map!);
 			addHeatmapLayer(map!);
 			ready = true;
 
@@ -115,6 +143,8 @@
 			}
 		});
 
+		map.on('moveend', detectRegion);
+
 		return () => map?.remove();
 	});
 
@@ -131,10 +161,15 @@
 		(map.getSource(SRC_BOUNDARY) as GeoJSONSource | undefined)?.setData(boundary as any);
 	});
 
-	// Fly to the active region's extent when it changes.
+	// Fly to the active region's extent when it changes — unless the change came from
+	// the user panning into the region, in which case stay where they are.
 	$effect(() => {
-		const { center, zoom } = region;
+		const { id, center, zoom } = region;
 		if (!map || !ready) return;
+		if (pannedToRegionId === id) {
+			pannedToRegionId = null;
+			return;
+		}
 		map.flyTo({ center, zoom, essential: true });
 	});
 

@@ -3,9 +3,10 @@
 	import Filters from '$lib/ui/Filters.svelte';
 	import DetailPanel from '$lib/ui/DetailPanel.svelte';
 	import { REGIONS, DEFAULT_REGION } from '$lib/data/regions';
-	import { loadIncidents, fetchDataMaxDate } from '$lib/data/arcgis';
+	import { loadIncidents, fetchDataMaxDate, fetchClearanceCounts } from '$lib/data/arcgis';
 	import { loadBoundaries, EMPTY_BOUNDARY, type BoundaryCollection } from '$lib/data/boundaries';
 	import type {
+		ClearanceCounts,
 		CrimeCollection,
 		CrimeProps,
 		RegionConfig,
@@ -45,6 +46,7 @@
 	let showHeatmap = $state(false);
 	let boundary = $state<BoundaryCollection>(EMPTY_BOUNDARY);
 	let dataThrough = $state<string | null>(null);
+	let clearanceCounts = $state<ClearanceCounts | null>(null);
 
 	// Anchor the window to the region's latest available data (data can lag months).
 	$effect(() => {
@@ -86,6 +88,23 @@
 		return () => ctrl.abort();
 	});
 
+	// Per-category solved/unsolved tallies for the filter list. Tracks date/municipality
+	// but not the category checkboxes (fetchClearanceCounts ignores those on purpose).
+	$effect(() => {
+		const reg = region;
+		const snapshot: FilterState = {
+			from: filters.from,
+			to: filters.to,
+			categories: [],
+			municipalities: [...filters.municipalities]
+		};
+		const ctrl = new AbortController();
+		fetchClearanceCounts(reg, snapshot, ctrl.signal)
+			.then((c) => (clearanceCounts = c))
+			.catch(() => {}); // counts are decorative — ignore failures
+		return () => ctrl.abort();
+	});
+
 	// Outline the selected municipalities. Separate effect: only refetch on that change.
 	$effect(() => {
 		const munis = [...filters.municipalities];
@@ -102,7 +121,15 @@
 </svelte:head>
 
 <main>
-	<CrimeMap {region} {data} {boundary} heatmap={showHeatmap} onSelect={(p) => (selected = p)} />
+	<CrimeMap
+		{region}
+		regions={REGIONS}
+		{data}
+		{boundary}
+		heatmap={showHeatmap}
+		onSelect={(p) => (selected = p)}
+		onAutoRegion={selectRegion}
+	/>
 	<Filters
 		{region}
 		regions={REGIONS}
@@ -112,6 +139,7 @@
 		count={data.features.length}
 		{source}
 		{dataThrough}
+		{clearanceCounts}
 	/>
 	<DetailPanel incident={selected} onClose={() => (selected = null)} />
 	{#if loading}<div class="loading">Loading…</div>{/if}

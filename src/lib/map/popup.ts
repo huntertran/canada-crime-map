@@ -1,5 +1,5 @@
 import type { CrimeProps } from '../data/types';
-import { colorFor, labelFor, muniLabel } from '../data/regions';
+import { clearanceColor, colorFor, labelFor, muniLabel } from '../data/regions';
 
 function esc(s: unknown): string {
 	return String(s ?? '')
@@ -20,9 +20,18 @@ function fmtDate(iso: string): string {
 	});
 }
 
+function clearanceBadge(status: string): string {
+	const bg = clearanceColor(status);
+	return (
+		`<span style="background:${bg};color:#fff;font-size:11px;font-weight:600;` +
+		`padding:1px 8px;border-radius:8px">${esc(status)}</span>`
+	);
+}
+
 /** Compact HTML for the on-map MapLibre popup. The side panel renders richer detail. */
 export function buildPopupHtml(p: CrimeProps): string {
 	const rows: string[] = [];
+	if (p.clearance) rows.push(`<div style="margin-bottom:2px">${clearanceBadge(p.clearance)}</div>`);
 	if (p.date) rows.push(`<div>📅 ${fmtDate(p.date)}</div>`);
 	if (p.municipality) rows.push(`<div>📍 ${esc(muniLabel(p.municipality))}</div>`);
 	if (p.address) rows.push(`<div>${esc(p.address)}</div>`);

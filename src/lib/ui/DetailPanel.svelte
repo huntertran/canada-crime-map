@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { CrimeProps } from '../data/types';
-	import { colorFor, labelFor, muniLabel } from '../data/regions';
+	import { clearanceColor, colorFor, labelFor, muniLabel } from '../data/regions';
 	import { iconSvg } from '../map/icons';
 
 	let { incident, onClose }: { incident: CrimeProps | null; onClose: () => void } = $props();
@@ -22,6 +22,11 @@
 		<div class="head">
 			<span class="chip" style:background={colorFor(incident.category)}>{@html iconSvg(incident.category)}</span>
 			<h2>{labelFor(incident.category)}</h2>
+			{#if incident.clearance}
+				<span class="pill" style:background={clearanceColor(incident.clearance)}>
+					{incident.clearance}
+				</span>
+			{/if}
 		</div>
 		{#if incident.description}<p class="desc">{incident.description}</p>{/if}
 		<dl>
@@ -91,6 +96,14 @@
 	.chip :global(svg) {
 		width: 17px;
 		height: 17px;
+	}
+	.pill {
+		color: #fff;
+		font-size: 11px;
+		font-weight: 600;
+		padding: 1px 8px;
+		border-radius: 8px;
+		flex: 0 0 auto;
 	}
 	.desc {
 		margin: 8px 0;

@@ -45,6 +45,17 @@ export function labelFor(category: string): string {
 	return CATEGORY_LABELS[category] ?? category;
 }
 
+/** Clearance status -> badge color; unrecognized statuses fall back to grey. */
+const CLEARANCE_COLORS: Record<string, string> = {
+	Solved: '#16a34a',
+	Ongoing: '#d97706',
+	Unsolved: '#6b7280'
+};
+
+export function clearanceColor(status: string): string {
+	return CLEARANCE_COLORS[status] ?? '#6b7280';
+}
+
 /** UPPERCASE municipality codes -> title case for display. */
 export function muniLabel(m: string): string {
 	const fix: Record<string, string> = { HALTONHILLS: 'Halton Hills', RICHMONDHILL: 'Richmond Hill' };
@@ -68,10 +79,12 @@ export const REGIONS: RegionConfig[] = [
 			date: 'OccDateUTC',
 			municipality: 'Municipality',
 			description: 'Description',
-			address: 'StreetName'
+			address: 'StreetName',
+			clearance: 'ClearanceStatus' // Solved / Unsolved / Ongoing
 		},
 		center: [-79.74, 43.65],
 		zoom: 10.5,
+		bounds: [-80.3, 43.45, -79.53, 44.0],
 		categories: ['ASL', 'BNE', 'ROB', 'VEH', 'FRA', 'MIS', 'DRP', 'DRT', 'HOM'],
 		municipalities: ['BRAMPTON', 'MISSISSAUGA', 'CALEDON'],
 		// Official Peel "Municipal Boundary" layer; MUN_NAME = Brampton/Mississauga/Caledon.
@@ -96,6 +109,7 @@ export const REGIONS: RegionConfig[] = [
 		},
 		center: [-79.38, 43.72],
 		zoom: 10.5,
+		bounds: [-79.64, 43.57, -79.11, 43.86],
 		// Toronto Police "Major Crime Indicators" CSI categories.
 		categories: ['Assault', 'Break and Enter', 'Auto Theft', 'Robbery', 'Theft Over'],
 		// No municipal sub-filter (single city); Etobicoke etc. are districts within Toronto.

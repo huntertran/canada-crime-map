@@ -1,4 +1,10 @@
-import type { CrimeCollection, CrimeFeature, Filters, RegionConfig } from './types';
+import type {
+	ClearanceCounts,
+	CrimeCollection,
+	CrimeFeature,
+	Filters,
+	RegionConfig
+} from './types';
 import { cacheGet, cacheSet } from './cache';
 import { generateDemo, filterDemo } from './demo';
 
@@ -29,9 +35,15 @@ export function buildWhere(region: RegionConfig, filters: Filters): string {
 
 function outFields(region: RegionConfig): string {
 	const fm = region.fieldMap;
-	const fields = [fm.id, fm.category, fm.date, fm.municipality, fm.description, fm.address].filter(
-		Boolean
-	) as string[];
+	const fields = [
+		fm.id,
+		fm.category,
+		fm.date,
+		fm.municipality,
+		fm.description,
+		fm.address,
+		fm.clearance
+	].filter(Boolean) as string[];
 	return [...new Set(fields)].join(',');
 }
 
@@ -59,7 +71,8 @@ function mapFeature(raw: any, region: RegionConfig): CrimeFeature | null {
 			date: toIso(p[fm.date]),
 			municipality: fm.municipality ? p[fm.municipality] : undefined,
 			description: fm.description ? p[fm.description] : undefined,
-			address: fm.address ? p[fm.address] : undefined
+			address: fm.address ? p[fm.address] : undefined,
+			clearance: fm.clearance ? p[fm.clearance] : undefined
 		}
 	};
 }
@@ -138,6 +151,49 @@ export async function fetchDataMaxDate(
 	}
 	maxDateCache.set(region.id, iso);
 	return iso;
+}
+
+/**
+ * Per-category solved/ongoing/unsolved tallies via a server-side groupBy query.
+ * Deliberately ignores the category filter so every checkbox row keeps its
+ * numbers even when unchecked. Unrecognized statuses count as unsolved.
+ * Returns null for regions without a clearance field.
+ */
+export async function fetchClearanceCounts(
+	region: RegionConfig,
+	filters: Filters,
+	signal?: AbortSignal
+): Promise<ClearanceCounts | null> {
+	const fm = region.fieldMap;
+	if (!fm.clearance || !region.verified) return null;
+
+	const where = buildWhere(region, { ...filters, categories: [] });
+	const url = new URL(region.layerUrl.replace(/\/$/, '') + '/query');
+	url.search = new URLSearchParams({
+		where,
+		groupByFieldsForStatistics: `${fm.category},${fm.clearance}`,
+		outStatistics: JSON.stringify([
+			{ statisticType: 'count', onStatisticField: fm.id, outStatisticFieldName: 'n' }
+		]),
+		f: 'json'
+	}).toString();
+
+	const res = await fetch(url, { signal });
+	if (!res.ok) throw new Error(`ArcGIS ${res.status} ${res.statusText}`);
+	const json = await res.json();
+	if (json.error) throw new Error(`ArcGIS error: ${json.error.message ?? 'unknown'}`);
+
+	const counts: ClearanceCounts = {};
+	for (const f of json.features ?? []) {
+		const a = f.attributes ?? {};
+		const cat = String(a[fm.category] ?? '');
+		if (!cat) continue;
+		const row = (counts[cat] ??= { solved: 0, ongoing: 0, unsolved: 0 });
+		if (a[fm.clearance] === 'Solved') row.solved += a.n ?? 0;
+		else if (a[fm.clearance] === 'Ongoing') row.ongoing += a.n ?? 0;
+		else row.unsolved += a.n ?? 0;
+	}
+	return counts;
 }
 
 export interface LoadResult {

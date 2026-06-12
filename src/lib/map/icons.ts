@@ -51,6 +51,14 @@ const ICONS: Record<string, string> = {
 export const ICON_PREFIX = 'crime-';
 export const ICON_DEFAULT = ICON_PREFIX + 'default';
 
+/** Green "solved" badge drawn at the corner of incidents with clearance = Solved. */
+export const ICON_SOLVED = 'crime-solved-check';
+const SOLVED_SVG =
+	'<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">' +
+	'<circle cx="12" cy="12" r="10" fill="#16a34a" stroke="#fff" stroke-width="2"/>' +
+	'<path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="#fff" stroke-width="2.6" ' +
+	'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
 /** Wrap inner glyph markup as a standalone SVG document. */
 export function wrapSvg(inner: string, stroke = '#fff', strokeWidth = 2.1): string {
 	return (
@@ -90,12 +98,17 @@ async function rasterize(svg: string, size: number): Promise<ImageData> {
  * the style loads, before adding the symbol layer that references them.
  */
 export async function loadCrimeIcons(map: MlMap, size = 56): Promise<void> {
-	await Promise.all(
-		Object.entries(ICONS).map(async ([code, inner]) => {
+	await Promise.all([
+		...Object.entries(ICONS).map(async ([code, inner]) => {
 			const id = ICON_PREFIX + code;
 			if (map.hasImage(id)) return;
 			const data = await rasterize(wrapSvg(inner), size);
 			map.addImage(id, data, { pixelRatio: 2 });
-		})
-	);
+		}),
+		(async () => {
+			if (map.hasImage(ICON_SOLVED)) return;
+			const data = await rasterize(SOLVED_SVG, size);
+			map.addImage(ICON_SOLVED, data, { pixelRatio: 2 });
+		})()
+	]);
 }

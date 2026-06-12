@@ -1,6 +1,6 @@
 import type { Map as MlMap, ExpressionSpecification } from 'maplibre-gl';
 import { CATEGORY_COLORS, DEFAULT_COLOR } from '../data/regions';
-import { ICON_PREFIX, ICON_DEFAULT } from './icons';
+import { ICON_PREFIX, ICON_DEFAULT, ICON_SOLVED } from './icons';
 
 export const SRC = 'crimes';
 export const SRC_BOUNDARY = 'boundary';
@@ -10,6 +10,7 @@ export const LYR_CLUSTERS = 'crimes-clusters';
 export const LYR_COUNT = 'crimes-cluster-count';
 export const LYR_POINT = 'crimes-unclustered';
 export const LYR_ICON = 'crimes-icon';
+export const LYR_SOLVED = 'crimes-solved-badge';
 
 // Heatmap uses its own UNclustered source — a clustered source only exposes cluster
 // centroids + leaf points, which makes a misleading heatmap.
@@ -17,7 +18,7 @@ export const SRC_HEAT = 'crimes-heat';
 export const LYR_HEAT = 'crimes-heatmap';
 
 /** Layers shown in normal (non-heatmap) mode; hidden when the heatmap is on. */
-export const CLUSTER_LAYERS = [LYR_CLUSTERS, LYR_COUNT, LYR_POINT, LYR_ICON];
+export const CLUSTER_LAYERS = [LYR_CLUSTERS, LYR_COUNT, LYR_POINT, LYR_ICON, LYR_SOLVED];
 
 /** match expression: category -> color, used for single-incident dots. */
 function categoryColorExpr(): ExpressionSpecification {
@@ -122,6 +123,27 @@ export function addIconLayer(map: MlMap): void {
 				['image', ICON_DEFAULT]
 			],
 			'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.75, 16, 1.15],
+			'icon-allow-overlap': true,
+			'icon-ignore-placement': true
+		}
+	});
+}
+
+/**
+ * Small green check badge at the top-right of solved incidents (regions with a
+ * clearance field, e.g. Peel). Offset is in pre-scale px, multiplied by icon-size.
+ */
+export function addSolvedBadgeLayer(map: MlMap): void {
+	map.addLayer({
+		id: LYR_SOLVED,
+		type: 'symbol',
+		source: SRC,
+		filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'clearance'], 'Solved']],
+		layout: {
+			'icon-image': ['image', ICON_SOLVED],
+			// Roughly 40% of the dot glyph; tracks the same zoom ramp.
+			'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.42, 16, 0.6],
+			'icon-offset': [22, -22],
 			'icon-allow-overlap': true,
 			'icon-ignore-placement': true
 		}
