@@ -24,16 +24,20 @@ export async function loadBoundaries(
 ): Promise<BoundaryCollection> {
 	if (!region.boundary || muniCodes.length === 0) return EMPTY_BOUNDARY;
 
-	// Map our UPPERCASE codes onto the layer's title-case MUN_NAME values.
+	// Resolve our municipality codes to display names, then match the boundary layer's
+	// name field case-insensitively — layers vary (e.g. York "Markham" vs Ontario
+	// "MARKHAM"), so UPPER() on both sides keeps one query working everywhere.
 	const names = muniCodes.map(muniLabel);
 	const key = region.id + '|' + [...names].sort().join(',');
 	const hit = cache.get(key);
 	if (hit) return hit;
 
-	const list = names.map((n) => `'${n.replace(/'/g, "''")}'`).join(', ');
+	const list = names.map((n) => `'${n.toUpperCase().replace(/'/g, "''")}'`).join(', ');
+	let where = `UPPER(${region.boundary.nameField}) IN (${list})`;
+	if (region.boundary.where) where += ` AND (${region.boundary.where})`;
 	const url = new URL(region.boundary.url.replace(/\/$/, '') + '/query');
 	url.search = new URLSearchParams({
-		where: `${region.boundary.nameField} IN (${list})`,
+		where,
 		outFields: region.boundary.nameField,
 		outSR: '4326',
 		f: 'geojson'

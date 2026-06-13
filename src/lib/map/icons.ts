@@ -44,6 +44,34 @@ const ICONS: Record<string, string> = {
 	'Auto Theft': GLYPH.car,
 	Robbery: GLYPH.bag,
 	'Theft Over': GLYPH.box,
+	// York (occ_type values)
+	Assaults: GLYPH.bolt,
+	'Break and Enter - Residential': GLYPH.house,
+	'Break and Enter - Commercial': GLYPH.house,
+	'Theft of Motor Vehicle': GLYPH.car,
+	'Theft Over $5000': GLYPH.box,
+	'Theft Under $5000': GLYPH.box,
+	Fraud: GLYPH.card,
+	'Drug Violations': GLYPH.capsule,
+	Mischief: GLYPH.warning,
+	Homicide: GLYPH.skull,
+	// Durham (per-layer category; the rest reuse keys above)
+	'Firearm Shooting': GLYPH.warning,
+	// Halton (DESCRIPTION values)
+	'BREAK AND ENTER HOUSE': GLYPH.house,
+	'BREAK AND ENTER SHOP': GLYPH.box,
+	'BREAK AND ENTER OTHER': GLYPH.house,
+	'THEFT OF VEHICLE': GLYPH.car,
+	'THEFT FROM AUTO': GLYPH.car,
+	'THEFT UNDER': GLYPH.box,
+	'THEFT OVER': GLYPH.box,
+	'THEFT OF BICYCLE': GLYPH.box,
+	ROBBERY: GLYPH.bag,
+	ARSON: GLYPH.warning,
+	'OFFENSIVE WEAPONS': GLYPH.warning,
+	'FEDERAL STATS - DRUGS': GLYPH.capsule,
+	'PROPERTY DAMAGE UNDER $5,000': GLYPH.warning,
+	'PROPERTY DAMAGE OVER $5,000': GLYPH.warning,
 	// Fallback
 	default: GLYPH.dot
 };

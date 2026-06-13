@@ -2,6 +2,8 @@
 	import CrimeMap from '$lib/map/CrimeMap.svelte';
 	import Filters from '$lib/ui/Filters.svelte';
 	import DetailPanel from '$lib/ui/DetailPanel.svelte';
+	import BasemapPicker from '$lib/ui/BasemapPicker.svelte';
+	import { loadBasemapPref, saveBasemapPref, type BasemapPref } from '$lib/map/basemaps';
 	import { REGIONS, DEFAULT_REGION } from '$lib/data/regions';
 	import { loadIncidents, fetchDataMaxDate, fetchClearanceCounts } from '$lib/data/arcgis';
 	import { loadBoundaries, EMPTY_BOUNDARY, type BoundaryCollection } from '$lib/data/boundaries';
@@ -14,6 +16,8 @@
 	} from '$lib/data/types';
 
 	let region = $state<RegionConfig>(DEFAULT_REGION);
+	let basemap = $state<BasemapPref>(loadBasemapPref());
+	$effect(() => saveBasemapPref(basemap));
 
 	function isoDaysAgo(days: number): string {
 		return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
@@ -127,6 +131,7 @@
 		{data}
 		{boundary}
 		heatmap={showHeatmap}
+		{basemap}
 		onSelect={(p) => (selected = p)}
 		onAutoRegion={selectRegion}
 	/>
@@ -142,6 +147,7 @@
 		{clearanceCounts}
 	/>
 	<DetailPanel incident={selected} onClose={() => (selected = null)} />
+	<BasemapPicker bind:basemap />
 	{#if loading}<div class="loading">Loading…</div>{/if}
 </main>
 

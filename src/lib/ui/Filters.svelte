@@ -43,6 +43,32 @@
 		return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 	}
 
+	// Municipality nesting (e.g. Halton Hills → Georgetown, Acton). Children render indented
+	// under the parent; the tree is a display concern — checking a parent just selects the
+	// parent + child codes in the flat filters.municipalities, so matching is unchanged.
+	type MuniGroup = { code: string; children: string[] };
+	const muniGroups = $derived(region.municipalityGroups ?? []);
+	const childCodes = $derived(new Set(muniGroups.flatMap((g) => g.children)));
+	const topMunis = $derived(region.municipalities.filter((m) => !childCodes.has(m)));
+	let collapsed = $state<Record<string, boolean>>({}); // default: groups expanded
+
+	const groupFor = (code: string): MuniGroup | undefined => muniGroups.find((g) => g.code === code);
+	const members = (g: MuniGroup): string[] => [g.code, ...g.children];
+
+	function toggleParent(g: MuniGroup) {
+		const mem = members(g);
+		const all = mem.every((c) => filters.municipalities.includes(c));
+		filters.municipalities = all
+			? filters.municipalities.filter((c) => !mem.includes(c))
+			: [...new Set([...filters.municipalities, ...mem])];
+	}
+
+	// Tri-state parent checkbox: the indeterminate flag can't be set via markup attributes.
+	function indeterminate(node: HTMLInputElement, value: boolean) {
+		node.indeterminate = value;
+		return { update: (v: boolean) => (node.indeterminate = v) };
+	}
+
 	// Collapse the panel by default on small/touch screens so it doesn't bury the map.
 	let open = $state(true);
 	onMount(() => {
@@ -52,6 +78,12 @@
 
 <div class="panel" class:open>
 	<button class="header" onclick={() => (open = !open)} aria-expanded={open}>
+		<span class="mark" aria-hidden="true">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11Z" />
+				<circle cx="12" cy="10" r="2.5" />
+			</svg>
+		</span>
 		<span class="titles">
 			<span class="title">Canada Crime Map</span>
 			<span class="sub">{region.label}</span>
@@ -62,21 +94,26 @@
 	<div class="body">
 	<label class="field region">
 		<span>Region</span>
-		<select value={region.id} onchange={onRegionChange}>
-			{#each regions as r}
-				<option value={r.id}>{r.label}</option>
-			{/each}
-		</select>
+		<div class="select-wrap">
+			<select value={region.id} onchange={onRegionChange}>
+				{#each regions as r}
+					<option value={r.id}>{r.label}</option>
+				{/each}
+			</select>
+			<span class="caret" aria-hidden="true">▾</span>
+		</div>
 	</label>
 
-	<label class="field">
-		<span>From</span>
-		<input type="date" bind:value={filters.from} max={filters.to} />
-	</label>
-	<label class="field">
-		<span>To</span>
-		<input type="date" bind:value={filters.to} min={filters.from} />
-	</label>
+	<div class="range">
+		<label class="field">
+			<span>From</span>
+			<input type="date" bind:value={filters.from} max={filters.to} />
+		</label>
+		<label class="field">
+			<span>To</span>
+			<input type="date" bind:value={filters.to} min={filters.from} />
+		</label>
+	</div>
 
 	<fieldset>
 		<legend>Crime type</legend>
@@ -129,15 +166,52 @@
 	{#if region.municipalities.length}
 		<fieldset>
 			<legend>Municipality</legend>
-			{#each region.municipalities as m}
-				<label class="chk">
-					<input
-						type="checkbox"
-						checked={filters.municipalities.includes(m)}
-						onchange={() => (filters.municipalities = toggle(filters.municipalities, m))}
-					/>
-					{muniLabel(m)}
-				</label>
+			{#each topMunis as m}
+				{@const g = groupFor(m)}
+				{#if g}
+					{@const mem = members(g)}
+					{@const all = mem.every((c) => filters.municipalities.includes(c))}
+					{@const some = mem.some((c) => filters.municipalities.includes(c))}
+					<div class="parent-row">
+						<label class="chk">
+							<input
+								type="checkbox"
+								checked={all}
+								use:indeterminate={some && !all}
+								onchange={() => toggleParent(g)}
+							/>
+							{muniLabel(m)}
+						</label>
+						<button
+							type="button"
+							class="disc"
+							aria-expanded={!collapsed[m]}
+							aria-label="Toggle communities"
+							onclick={() => (collapsed[m] = !collapsed[m])}>{collapsed[m] ? '▸' : '▾'}</button
+						>
+					</div>
+					{#if !collapsed[m]}
+						{#each g.children as c}
+							<label class="chk child">
+								<input
+									type="checkbox"
+									checked={filters.municipalities.includes(c)}
+									onchange={() => (filters.municipalities = toggle(filters.municipalities, c))}
+								/>
+								{muniLabel(c)}
+							</label>
+						{/each}
+					{/if}
+				{:else}
+					<label class="chk">
+						<input
+							type="checkbox"
+							checked={filters.municipalities.includes(m)}
+							onchange={() => (filters.municipalities = toggle(filters.municipalities, m))}
+						/>
+						{muniLabel(m)}
+					</label>
+				{/if}
 			{/each}
 		</fieldset>
 	{/if}
@@ -150,19 +224,22 @@
 		</label>
 	</fieldset>
 
-	<div class="status">
-		<strong>{count.toLocaleString()}</strong> incidents
-		<span class="badge" class:demo={source === 'demo'}>{source}</span>
 	</div>
-	{#if dataThrough}
-		<p class="through">Data through {prettyDate(dataThrough)}</p>
-	{/if}
-	{#if source === 'demo'}
-		<p class="note">
-			Showing demo data — the live Peel endpoint isn't wired in yet. See
-			<code>regions.ts</code>.
-		</p>
-	{/if}
+
+	<div class="footer">
+		<div class="status">
+			<strong>{count.toLocaleString()}</strong> incidents
+			<span class="badge" class:demo={source === 'demo'}>{source}</span>
+		</div>
+		{#if dataThrough}
+			<p class="through">Data through {prettyDate(dataThrough)}</p>
+		{/if}
+		{#if source === 'demo'}
+			<p class="note">
+				Showing demo data — the live Peel endpoint isn't wired in yet. See
+				<code>regions.ts</code>.
+			</p>
+		{/if}
 	</div>
 </div>
 
@@ -172,63 +249,155 @@
 		top: 12px;
 		left: 12px;
 		z-index: 5;
-		width: 250px;
+		display: flex;
+		flex-direction: column;
+		width: 260px;
 		max-height: calc(100% - 24px);
-		overflow: auto;
-		padding: 6px 16px 14px;
-		background: rgba(255, 255, 255, 0.96);
-		border-radius: 10px;
-		box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+		overflow: hidden;
+		background: rgba(255, 255, 255, 0.97);
+		border-radius: 14px;
+		box-shadow: 0 6px 24px rgba(0, 0, 0, 0.16);
 		font: 13px/1.4 system-ui, sans-serif;
 		color: #1a1a1a;
-		-webkit-overflow-scrolling: touch;
 	}
 	.header {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		gap: 8px;
-		width: calc(100% + 32px);
-		margin: 0 -16px;
-		padding: 10px 16px;
+		gap: 11px;
+		width: 100%;
+		padding: 13px 16px;
 		border: none;
-		background: none;
+		border-radius: 14px 14px 0 0;
+		background: linear-gradient(135deg, #166534, #15803d);
 		cursor: pointer;
 		text-align: left;
-		color: inherit;
+		color: #fff;
 		font: inherit;
+		flex: 0 0 auto;
+	}
+	.mark {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 32px;
+		height: 32px;
+		flex: 0 0 auto;
+		border-radius: 9px;
+		background: rgba(255, 255, 255, 0.16);
+	}
+	.mark svg {
+		width: 19px;
+		height: 19px;
 	}
 	.titles {
 		display: flex;
 		flex-direction: column;
+		min-width: 0;
+		flex: 1;
 	}
 	.title {
-		font-size: 17px;
+		font-size: 15px;
 		font-weight: 700;
+		letter-spacing: -0.01em;
+		white-space: nowrap;
 	}
 	.sub {
-		color: #555;
-		font-size: 12px;
+		color: rgba(255, 255, 255, 0.8);
+		font-size: 11.5px;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 	.chevron {
-		color: #888;
-		font-size: 14px;
+		color: rgba(255, 255, 255, 0.85);
+		font-size: 13px;
+		flex: 0 0 auto;
 	}
 	/* Collapsed: hide everything but the header. */
 	.panel:not(.open) .body {
 		display: none;
 	}
 	.body {
-		padding-top: 8px;
+		flex: 1 1 auto;
+		min-height: 0;
+		overflow-y: auto;
+		padding: 14px 16px;
+		scrollbar-gutter: stable;
+		scrollbar-width: thin;
+		scrollbar-color: #c3c9d2 transparent;
+		-webkit-overflow-scrolling: touch;
+	}
+	.body::-webkit-scrollbar {
+		width: 8px;
+	}
+	.body::-webkit-scrollbar-thumb {
+		background: #c3c9d2;
+		border-radius: 4px;
+		border: 2px solid transparent;
+		background-clip: padding-box;
+	}
+	.body::-webkit-scrollbar-thumb:hover {
+		background: #a7b0bd;
+		background-clip: padding-box;
 	}
 	.field {
 		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		margin-bottom: 8px;
+		flex-direction: column;
+		gap: 5px;
+		margin-bottom: 10px;
 	}
-	.field input {
-		flex: 0 0 auto;
+	.field > span {
+		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.03em;
+		text-transform: uppercase;
+		color: #6b7280;
+	}
+	.range {
+		display: flex;
+		gap: 10px;
+	}
+	.range .field {
+		flex: 1;
+		min-width: 0;
+	}
+	/* Shared control look for select + date inputs. */
+	.region select,
+	.field input[type='date'] {
+		width: 100%;
+		min-height: 36px;
+		padding: 7px 10px;
+		box-sizing: border-box;
+		border: 1px solid #d7dce3;
+		border-radius: 9px;
+		background: #fff;
+		font: inherit;
+		color: #1a1a1a;
+		transition: border-color 0.12s, box-shadow 0.12s;
+	}
+	.region select:focus,
+	.field input[type='date']:focus {
+		outline: none;
+		border-color: #15803d;
+		box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.15);
+	}
+	.select-wrap {
+		position: relative;
+	}
+	.region select {
+		appearance: none;
+		-webkit-appearance: none;
+		padding-right: 28px;
+		cursor: pointer;
+	}
+	.caret {
+		position: absolute;
+		right: 11px;
+		top: 50%;
+		transform: translateY(-50%);
+		pointer-events: none;
+		font-size: 11px;
+		color: #6b7280;
 	}
 	fieldset {
 		border: none;
@@ -254,17 +423,27 @@
 		height: 18px;
 		flex: 0 0 auto;
 	}
-	.field input[type='date'] {
-		width: 150px;
-		min-height: 32px;
-		padding: 4px 6px;
-		box-sizing: border-box;
+	/* Nested municipality groups: parent row carries a disclosure toggle; children indent. */
+	.parent-row {
+		display: flex;
+		align-items: center;
 	}
-	.region select {
-		width: 150px;
-		min-height: 32px;
-		padding: 4px 6px;
-		box-sizing: border-box;
+	.parent-row .chk {
+		flex: 1;
+		min-width: 0;
+	}
+	.disc {
+		flex: 0 0 auto;
+		border: none;
+		background: none;
+		cursor: pointer;
+		color: #888;
+		font-size: 12px;
+		line-height: 1;
+		padding: 6px 8px;
+	}
+	.chk.child {
+		margin-left: 26px;
 	}
 	.chip {
 		display: inline-flex;
@@ -353,10 +532,16 @@
 		font-size: 10.5px;
 		color: #888;
 	}
-	.status {
-		margin-top: 12px;
-		padding-top: 10px;
+	/* Footer pinned below the scrolling body so the live count stays visible. */
+	.footer {
+		flex: 0 0 auto;
+		padding: 10px 16px;
 		border-top: 1px solid #e2e2e2;
+		background: rgba(255, 255, 255, 0.97);
+		border-radius: 0 0 14px 14px;
+	}
+	.panel:not(.open) .footer {
+		display: none;
 	}
 	.badge {
 		float: right;
@@ -403,8 +588,9 @@
 		.chk {
 			min-height: 44px;
 		}
+		.region select,
 		.field input[type='date'] {
-			min-height: 40px;
+			min-height: 42px;
 			font-size: 16px; /* prevents iOS zoom-on-focus */
 		}
 	}
