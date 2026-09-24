@@ -231,12 +231,14 @@
 		map.flyTo({ center, zoom, essential: true });
 	});
 
-	// Toggle between cluster view and heatmap view.
+	// Toggle between cluster view and heatmap view (read up front — see above; addOverlay
+	// applies the current value when the map becomes ready).
 	$effect(() => {
+		const on = heatmap;
 		if (!map || !ready) return;
-		map.setLayoutProperty(LYR_HEAT, 'visibility', heatmap ? 'visible' : 'none');
+		map.setLayoutProperty(LYR_HEAT, 'visibility', on ? 'visible' : 'none');
 		for (const lyr of CLUSTER_LAYERS) {
-			map.setLayoutProperty(lyr, 'visibility', heatmap ? 'none' : 'visible');
+			map.setLayoutProperty(lyr, 'visibility', on ? 'none' : 'visible');
 		}
 	});
 </script>
