@@ -134,8 +134,8 @@ Built:
 
 Backlog:
 - [ ] Shareable URL state (filters/viewport in query params)
-- [ ] Heatmap toggle
-- [ ] Time-slider animation over the full window
+- [x] Heatmap toggle
+- [x] Time-slider animation over the full window
 - [ ] Per-area crime-rate choropleth
 - [ ] Trend sparkline
 - [ ] Multi-region switcher UI
