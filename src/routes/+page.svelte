@@ -3,10 +3,19 @@
 	import Filters from '$lib/ui/Filters.svelte';
 	import DetailPanel from '$lib/ui/DetailPanel.svelte';
 	import BasemapPicker from '$lib/ui/BasemapPicker.svelte';
+	import TimeSlider from '$lib/ui/TimeSlider.svelte';
 	import { loadBasemapPref, saveBasemapPref, type BasemapPref } from '$lib/map/basemaps';
 	import { REGIONS, DEFAULT_REGION } from '$lib/data/regions';
 	import { loadIncidents, fetchDataMaxDate, fetchClearanceCounts } from '$lib/data/arcgis';
 	import { loadBoundaries, EMPTY_BOUNDARY, type BoundaryCollection } from '$lib/data/boundaries';
+	import {
+		buildTimeline,
+		rangeOf,
+		sliceWindow,
+		stepCount,
+		stepStart,
+		type TimelineState
+	} from '$lib/data/timeline';
 	import type {
 		ClearanceCounts,
 		CrimeCollection,
@@ -41,6 +50,9 @@
 		filters.categories = [];
 		filters.municipalities = [];
 		selected = null;
+		timeline.open = false;
+		timeline.playing = false;
+		timeline.step = 0;
 	}
 
 	let data = $state<CrimeCollection>({ type: 'FeatureCollection', features: [] });
@@ -51,6 +63,39 @@
 	let boundary = $state<BoundaryCollection>(EMPTY_BOUNDARY);
 	let dataThrough = $state<string | null>(null);
 	let clearanceCounts = $state<ClearanceCounts | null>(null);
+
+	// Time slider: re-slices the loaded `data` into a moving window (no refetch). The map
+	// only sees the slice while the timeline is open; everything else keeps the full set.
+	let timeline = $state<TimelineState>({
+		open: false,
+		playing: false,
+		step: 0,
+		size: 'week',
+		speed: 1,
+		cumulative: false
+	});
+	const sorted = $derived(buildTimeline(data));
+	const range = $derived(rangeOf(filters.from, filters.to));
+	const steps = $derived(stepCount(range.origin, range.end, timeline.size));
+	// Clamp on read: the range can shrink under the playhead when filters change.
+	const step = $derived(Math.min(timeline.step, steps - 1));
+	const frame = $derived({
+		start: timeline.cumulative ? range.origin : stepStart(range.origin, timeline.size, step),
+		end: Math.min(stepStart(range.origin, timeline.size, step + 1), range.end)
+	});
+	const mapData = $derived(
+		timeline.open ? sliceWindow(sorted, frame.start, frame.end) : data
+	);
+
+	// Advance one window per tick; stop at the end of the range.
+	$effect(() => {
+		if (!timeline.playing) return;
+		const id = setInterval(() => {
+			if (step >= steps - 1) timeline.playing = false;
+			else timeline.step = step + 1;
+		}, 1000 / timeline.speed);
+		return () => clearInterval(id);
+	});
 
 	// Anchor the window to the region's latest available data (data can lag months).
 	$effect(() => {
@@ -128,7 +173,7 @@
 	<CrimeMap
 		{region}
 		regions={REGIONS}
-		{data}
+		data={mapData}
 		{boundary}
 		heatmap={showHeatmap}
 		{basemap}
@@ -148,7 +193,16 @@
 	/>
 	<DetailPanel incident={selected} onClose={() => (selected = null)} />
 	<BasemapPicker bind:basemap />
-	{#if loading}<div class="loading">Loading…</div>{/if}
+	<TimeSlider
+		bind:timeline
+		origin={range.origin}
+		{steps}
+		{step}
+		start={frame.start}
+		end={frame.end}
+		count={mapData.features.length}
+	/>
+	{#if loading}<div class="loading" class:raised={timeline.open}>Loading…</div>{/if}
 </main>
 
 <style>
@@ -168,5 +222,14 @@
 		padding: 6px 16px;
 		border-radius: 16px;
 		font: 13px system-ui, sans-serif;
+	}
+	/* Clear the open time slider, which also sits at the bottom centre. */
+	.loading.raised {
+		bottom: 130px;
+	}
+	@media (max-width: 640px) {
+		.loading.raised {
+			bottom: 16px;
+		}
 	}
 </style>

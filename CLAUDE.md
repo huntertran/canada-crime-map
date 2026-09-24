@@ -139,6 +139,12 @@ its own `AbortController` so a superseded fetch is dropped:
   unchecked rows keep their counts; null for regions without a clearance field) and
   `loadBoundaries` (municipal outline)
 
+The time slider (`TimeSlider.svelte` + `src/lib/data/timeline.ts`) never refetches: while open,
+`+page.svelte` passes the map a `$derived` slice of the loaded `data` for the current window
+(sorted once per load, sliced by binary search). Cluster counts come from the source, so it must
+be a `setData` slice — a layer `setFilter` would leave hidden points in the cluster totals. The
+filter panel's incident count stays the full-range total.
+
 Effects snapshot `filters` field by field instead of passing the `$state` proxy, so each field
 is tracked as a dependency. Boundary and clearance failures are swallowed — both are decorative.
 
