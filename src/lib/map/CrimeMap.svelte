@@ -117,6 +117,11 @@
 		for (const lyr of CLUSTER_LAYERS) {
 			map.setLayoutProperty(lyr, 'visibility', heatmap ? 'none' : 'visible');
 		}
+		// Data/boundary that changed during the icon await was skipped by the effects (not
+		// ready yet) and they won't re-fire, so push the current values now.
+		(map.getSource(SRC) as GeoJSONSource).setData(data as any);
+		(map.getSource(SRC_HEAT) as GeoJSONSource).setData(data as any);
+		(map.getSource(SRC_BOUNDARY) as GeoJSONSource).setData(boundary as any);
 		ready = true;
 	}
 
