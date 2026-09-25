@@ -2,6 +2,8 @@
 	import {
 		DAY,
 		SPEEDS,
+		fmtDay,
+		windowLabel,
 		STEP_SIZES,
 		stepIndexAt,
 		type StepSize,
@@ -29,22 +31,7 @@
 		count: number;
 	} = $props();
 
-	// Window bounds are UTC midnights, so format in UTC to keep the label on the right day.
-	function fmt(t: number, year: boolean): string {
-		if (Number.isNaN(t)) return '—';
-		return new Date(t).toLocaleDateString('en-CA', {
-			month: 'short',
-			day: 'numeric',
-			year: year ? 'numeric' : undefined,
-			timeZone: 'UTC'
-		});
-	}
-
-	const label = $derived.by(() => {
-		const last = end - DAY; // end is exclusive
-		if (last <= start) return fmt(start, true);
-		return `${fmt(start, false)} – ${fmt(last, true)}`;
-	});
+	const label = $derived(windowLabel(start, end));
 
 	function togglePlay() {
 		// Pressing play at the end restarts from the beginning.
@@ -85,7 +72,7 @@
 		</button>
 		<div class="track">
 			<div class="label">
-				<strong>{timeline.cumulative ? `Through ${fmt(end - DAY, true)}` : label}</strong>
+				<strong>{timeline.cumulative ? `Through ${fmtDay(end - DAY)}` : label}</strong>
 				<span class="count">{count.toLocaleString()} incidents</span>
 			</div>
 			<input

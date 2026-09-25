@@ -3,6 +3,8 @@
 	import type { ClearanceCounts, Filters, RegionConfig } from '../data/types';
 	import { colorFor, labelFor, muniLabel } from '../data/regions';
 	import { iconSvg } from '../map/icons';
+	import Sparkline from './Sparkline.svelte';
+	import type { Bucket, StepSize } from '../data/timeline';
 
 	let {
 		region,
@@ -13,7 +15,12 @@
 		count,
 		source,
 		dataThrough = null,
-		clearanceCounts = null
+		clearanceCounts = null,
+		trend = [],
+		trendSize = 'week',
+		activeStep = null,
+		onSeek,
+		loading = false
 	}: {
 		region: RegionConfig;
 		regions: RegionConfig[];
@@ -24,6 +31,13 @@
 		source: 'live' | 'cache' | 'demo';
 		dataThrough?: string | null;
 		clearanceCounts?: ClearanceCounts | null;
+		/** Incident counts per time-slider window across the date range. */
+		trend?: Bucket[];
+		trendSize?: StepSize;
+		/** Current time-slider window, or null while the timeline is closed. */
+		activeStep?: number | null;
+		onSeek?: (i: number) => void;
+		loading?: boolean;
 	} = $props();
 
 	function prettyDate(iso: string): string {
@@ -114,6 +128,8 @@
 			<input type="date" bind:value={filters.to} min={filters.from} />
 		</label>
 	</div>
+
+	<Sparkline buckets={trend} size={trendSize} active={activeStep} {onSeek} {loading} />
 
 	<fieldset>
 		<legend>Crime type</legend>

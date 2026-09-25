@@ -10,6 +10,7 @@
 	import { loadBoundaries, EMPTY_BOUNDARY, type BoundaryCollection } from '$lib/data/boundaries';
 	import {
 		buildTimeline,
+		bucketCounts,
 		rangeOf,
 		sliceWindow,
 		stepCount,
@@ -83,6 +84,8 @@
 		start: timeline.cumulative ? range.origin : stepStart(range.origin, timeline.size, step),
 		end: Math.min(stepStart(range.origin, timeline.size, step + 1), range.end)
 	});
+	// Sparkline in the filter panel: counts per slider window, so both share one bucketing.
+	const trend = $derived(bucketCounts(sorted, range.origin, range.end, timeline.size));
 	const mapData = $derived(
 		timeline.open ? sliceWindow(sorted, frame.start, frame.end) : data
 	);
@@ -190,6 +193,11 @@
 		{source}
 		{dataThrough}
 		{clearanceCounts}
+		{trend}
+		trendSize={timeline.size}
+		activeStep={timeline.open ? step : null}
+		onSeek={(i) => (timeline.step = i)}
+		{loading}
 	/>
 	<DetailPanel incident={selected} onClose={() => (selected = null)} />
 	<BasemapPicker bind:basemap />
