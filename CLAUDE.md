@@ -143,7 +143,9 @@ The time slider (`TimeSlider.svelte` + `src/lib/data/timeline.ts`) never refetch
 `+page.svelte` passes the map a `$derived` slice of the loaded `data` for the current window
 (sorted once per load, sliced by binary search). Cluster counts come from the source, so it must
 be a `setData` slice — a layer `setFilter` would leave hidden points in the cluster totals. The
-filter panel's incident count stays the full-range total.
+filter panel's incident count stays the full-range total. The filter panel's trend sparkline
+(`Sparkline.svelte`) counts incidents per slider window via `bucketCounts`, so it follows the
+timeline's Day/Week/Month choice, shades the current window while it's open, and seeks it on click.
 
 Effects snapshot `filters` field by field instead of passing the `$state` proxy, so each field
 is tracked as a dependency. Boundary and clearance failures are swallowed — both are decorative.

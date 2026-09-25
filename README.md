@@ -62,7 +62,7 @@ Pushing to `master` runs `.github/workflows/deploy.yml`, which builds with
 - [x] Heatmap toggle
 - [x] Time-slider animation over the full window
 - [ ] Per-area crime-rate choropleth
-- [ ] Trend sparkline
+- [x] Trend sparkline
 - [ ] Multi-region switcher UI
 - [ ] CSV export of current view
 - [ ] Shareable URL state

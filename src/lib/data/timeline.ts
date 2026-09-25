@@ -91,3 +91,45 @@ export function stepIndexAt(origin: number, size: StepSize, t: number): number {
 	while (stepStart(origin, size, i + 1) <= t) i++;
 	return i;
 }
+
+/** One window of the range with its incident count; `partial` = cut short by the range end. */
+export interface Bucket {
+	start: number;
+	end: number;
+	count: number;
+	partial: boolean;
+}
+
+/** Incident counts per window across [origin, end) — same windows the slider steps through. */
+export function bucketCounts(tl: Timeline, origin: number, end: number, size: StepSize): Bucket[] {
+	if (!(end > origin)) return [];
+	const n = stepCount(origin, end, size);
+	const out: Bucket[] = [];
+	let lo = lowerBound(tl.times, origin);
+	for (let i = 0; i < n; i++) {
+		const full = stepStart(origin, size, i + 1);
+		const e = Math.min(full, end);
+		const hi = lowerBound(tl.times, e);
+		out.push({ start: stepStart(origin, size, i), end: e, count: hi - lo, partial: e < full });
+		lo = hi;
+	}
+	return out;
+}
+
+/** Window bounds are UTC midnights, so format in UTC to keep labels on the right day. */
+export function fmtDay(t: number, year = true): string {
+	if (Number.isNaN(t)) return '—';
+	return new Date(t).toLocaleDateString('en-CA', {
+		month: 'short',
+		day: 'numeric',
+		year: year ? 'numeric' : undefined,
+		timeZone: 'UTC'
+	});
+}
+
+/** "Jul 31 – Aug 6, 2026" for a half-open [start, end) window; one date for a single day. */
+export function windowLabel(start: number, end: number): string {
+	const last = end - DAY;
+	if (last <= start) return fmtDay(start);
+	return `${fmtDay(start, false)} – ${fmtDay(last)}`;
+}
